@@ -1,0 +1,32 @@
+[project]
+name = "pj3106m-model"
+version = "0.1.0"
+description = "Simplified CadQuery 3D model (STEP/STL) of the PJ-3106M 3.5 mm 4-pole SMD phone jack for KiCad"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+# CadQuery's OCP (OpenCASCADE) wheels support Python 3.10-3.12.
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "cadquery>=2.6.1,<3",
+]
+
+[project.scripts]
+pj3106m-build = "pj3106m_model.build:main"
+pj3106m-datasheet = "pj3106m_model.datasheet:cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "trimesh>=4.0,<5",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pj3106m_model"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
