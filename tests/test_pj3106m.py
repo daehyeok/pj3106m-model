@@ -1,13 +1,13 @@
 """Dimensional checks for the PJ-3106M model against the datasheet.
 
-Expected values are hard-coded from the PJ-31060 datasheet rev A2 (identity and
-SHA-256 in pj3106m_model.params; the file itself is not in git) on purpose and
-are NOT imported from pj3106m_model.params, so a wrong parameter is caught
-instead of being compared against itself.
+Expected values are hard-coded from the PJ-3106M (YBC01) drawing rev A (LCSC
+C7428681; identity and SHA-256 in pj3106m_model.params; the file itself is not
+in git) on purpose and are NOT imported from pj3106m_model.params, so a wrong
+parameter is caught instead of being compared against itself.
 
-Model frame: Z=0 seating plane, plug opening toward +Y, pins 2/4/6 on +X,
+Model frame: Z=0 seating plane, plug opening toward +Y, pins 2/4/5 on +X,
 origin at the six-pad centroid. The housing front face is therefore at
-Y = 7.15 (pads span 2.05..12.25 mm behind the front face).
+Y = 7.125 (pads span 2.00..12.25 mm behind the front face).
 """
 
 from pathlib import Path
@@ -20,30 +20,30 @@ from pj3106m_model.build import export
 from pj3106m_model.model import build_fused, build_housing, build_leads, build_shell
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-FRONT_Y = 7.15
-AXIS_X = 0.10  # 3.10 from the pin-2/4/6 side of a 6.40 wide housing
-AXIS_Z = 1.90
+FRONT_Y = 7.125
+AXIS_X = 0.0  # on the housing centreline (end view)
+AXIS_Z = 1.85
 TOL_SMALL = 0.1  # datasheet: up to 5 mm
 TOL_LARGE = 0.2  # datasheet: above 5 mm
 
 # Pin -> (lead centre distance behind front face, side sign of X), PCB layout.
 PINS = {
-    1: (2.80, -1),
-    2: (2.85, +1),
-    3: (5.45, -1),
-    4: (9.40, +1),
-    5: (10.50, -1),
-    6: (11.50, +1),
+    1: (2.75, -1),
+    2: (9.40, +1),
+    3: (5.50, -1),
+    4: (2.75, +1),
+    5: (11.50, +1),
+    6: (10.50, -1),
 }
-PAD_ACROSS = 2.00
+PAD_ACROSS = 2.60
 PAD_ALONG = 1.50
-PAD_CENTRE_X = 3.45  # pad centres 6.90 apart (PCB layout)
+PAD_CENTRE_X = 3.10  # outer pad edges 8.80 apart, pads 2.60 across (PCB layout)
 
-# Tier A details (design.md placement table; photos LCSC C2939583).
-FLANGE_REAR_Y = FRONT_Y - 0.70  # flange 0.7 thick
-SHELL_REAR_Y = FRONT_Y - 3.30  # gold shell 0.7..3.3 behind the front face
+# Details (design.md D1; drawing views and LCSC C7428681 photos).
+FLANGE_REAR_Y = FRONT_Y - 0.60  # flange 0.6 thick
+SHELL_REAR_Y = FRONT_Y - 3.50  # gold shell 0.6..3.5 behind the front face
 SHELL_MID_Y = (FLANGE_REAR_Y + SHELL_REAR_Y) / 2
-NOSE_TIP_Y = FRONT_Y + 2.00
+NOSE_TIP_Y = FRONT_Y + 1.00
 LEAD_TIP_X = 8.30 / 2
 
 
@@ -82,11 +82,11 @@ def inside(solid, x, y, z):
 
 def test_overall_bounding_box(fused):
     bb = fused.BoundingBox()
-    assert_close("overall length (Y)", bb.ylen, 14.00, TOL_LARGE)
-    assert_close("lead tip span (X)", bb.xlen, 8.30, 0.25)
-    assert_close("nose top (Z max)", bb.zmax, 4.40, TOL_SMALL)
-    assert_close("nose/peg bottom (Z min)", bb.zmin, -0.60, TOL_SMALL)
-    assert_close("nose tip Y", bb.ymax, FRONT_Y + 2.00, TOL_SMALL)
+    assert_close("overall length (Y)", bb.ylen, 13.00, TOL_LARGE)
+    assert_close("lead tip span (X)", bb.xlen, 8.30, 0.30)
+    assert_close("top (Z max)", bb.zmax, 4.00, TOL_SMALL)
+    assert_close("nose/peg bottom (Z min)", bb.zmin, -0.50, TOL_SMALL)
+    assert_close("nose tip Y", bb.ymax, FRONT_Y + 1.00, TOL_SMALL)
     assert_close("housing rear Y", bb.ymin, FRONT_Y - 12.00, TOL_LARGE)
 
 
@@ -106,15 +106,32 @@ def test_housing_box(housing):
 
 
 def test_plug_bore(housing):
-    y = FRONT_Y + 1.0  # inside the nose
+    y = FRONT_Y + 0.5  # inside the nose
     assert not inside(housing, AXIS_X, y, AXIS_Z), "bore not open on the plug axis"
     # Bore radius 1.80 +/- 0.025 (diameter 3.60 +/- 0.05).
     assert not inside(housing, AXIS_X + 1.77, y, AXIS_Z), "bore smaller than 3.60"
     assert inside(housing, AXIS_X + 1.83, y, AXIS_Z), "bore larger than 3.60"
-    assert not inside(housing, AXIS_X, y, AXIS_Z + 1.77), "bore axis too low"
-    assert inside(housing, AXIS_X, y, AXIS_Z + 1.83), "bore axis too high"
+    assert not inside(housing, AXIS_X - 1.77, y, AXIS_Z), "bore off-centre (+X)"
+    assert inside(housing, AXIS_X - 1.83, y, AXIS_Z), "bore off-centre (-X)"
+    # The top of the bore is opened by the rim notch, so check from below.
+    assert not inside(housing, AXIS_X, y, AXIS_Z - 1.77), "bore axis too high"
+    assert inside(housing, AXIS_X, y, AXIS_Z - 1.83), "bore axis too low"
     # Bore is open at the nose tip.
-    assert not inside(housing, AXIS_X, FRONT_Y + 1.99, AXIS_Z), "bore not open at tip"
+    assert not inside(housing, AXIS_X, FRONT_Y + 0.99, AXIS_Z), "bore not open at tip"
+
+
+def test_flat_top(fused):
+    slab = cq.Solid.makeBox(40, 40, 10, cq.Vector(-20, -20, 4.05))
+    vol = fused.intersect(slab).Volume()
+    assert vol < 1e-9, f"{vol:.6f} mm^3 of the part is above 4.05"
+
+
+def test_nose_rim_flush_with_top(housing):
+    # Part of the housing in front of the front face = the nose.
+    front = cq.Solid.makeBox(20, 5, 20, cq.Vector(-10, FRONT_Y + 0.01, -10))
+    bb = housing.intersect(front).BoundingBox()
+    assert_close("nose top", bb.zmax, 4.00, 0.05)
+    assert inside(housing, AXIS_X + 2.2, FRONT_Y + 0.5, 3.0), "nose missing at the side"
 
 
 def test_nose_below_board(housing):
@@ -124,15 +141,19 @@ def test_nose_below_board(housing):
     front = cq.Workplane("XY").box(20, 10, 10).translate((0, FRONT_Y, 0)).val()
     part = housing.intersect(below).intersect(front)
     bb = part.BoundingBox()
-    assert_close("nose lowest point", bb.zmin, -0.60, TOL_SMALL)
-    assert bb.xlen <= 3.30, f"below-board nose chord {bb.xlen:.3f} > 3.30"
+    assert_close("nose lowest point", bb.zmin, -0.50, TOL_SMALL)
+    assert bb.xlen <= 3.05, f"below-board nose width {bb.xlen:.3f} > 3.05"
 
 
 def test_locating_peg(housing):
-    y = FRONT_Y - 10.55
-    assert inside(housing, AXIS_X, y, -0.3), "no peg 10.55 behind the front face"
-    assert not inside(housing, AXIS_X + 0.7, y, -0.3), "peg wider than ~1.15"
-    assert not inside(housing, AXIS_X, y - 1.0, -0.3), "peg misplaced along Y"
+    y = FRONT_Y - 10.70
+    assert inside(housing, AXIS_X, y, -0.3), "no peg 10.70 behind the front face"
+    assert inside(housing, AXIS_X + 0.54, y, -0.3), "peg narrower than 1.10"
+    assert not inside(housing, AXIS_X + 0.61, y, -0.3), "peg wider than 1.20"
+    assert not inside(housing, AXIS_X, y - 0.8, -0.3), "peg misplaced along Y"
+    assert not inside(housing, AXIS_X, y + 0.8, -0.3), "peg misplaced along Y"
+    assert inside(housing, AXIS_X, y, -0.45), "peg shorter than 0.50"
+    assert not inside(housing, AXIS_X, y, -0.55), "peg longer than 0.50"
 
 
 # --- Leads -----------------------------------------------------------------
@@ -156,7 +177,8 @@ def test_lead_on_pad(leads, pin):
     # Only the part of the lead outside the housing has to land on the pad.
     x_outer = bb.xmax if side > 0 else -bb.xmin
     assert x_outer <= abs(pad_x) + PAD_ACROSS / 2, f"pin {pin} overhangs its pad"
-    assert_close(f"pin {pin} tip |X|", x_outer, 8.30 / 2, 0.125)
+    assert_close(f"pin {pin} tip |X|", x_outer, 8.30 / 2, 0.15)
+    assert_close(f"pin {pin} width", bb.ylen, 1.00, 0.05)
 
 
 @pytest.mark.parametrize("pin", sorted(PINS))
@@ -197,6 +219,15 @@ def test_shell_covers_top_and_sides(shell):
     assert inside(shell, -2.0, SHELL_MID_Y, 3.93), "no shell on the top"
     assert inside(shell, 3.12, SHELL_MID_Y, 3.0), "no shell on the +X side"
     assert inside(shell, -3.12, SHELL_MID_Y, 3.0), "no shell on the -X side"
+
+
+def test_shell_side_walls_reach_board(shell):
+    assert shell.BoundingBox().zmin <= 0.15, "shell side walls end above 0.15"
+    for side in (+1, -1):
+        assert inside(shell, side * 3.12, SHELL_MID_Y, 0.14), (
+            f"shell side wall (X sign {side}) does not reach 0.15 above the board"
+        )
+    assert shell.BoundingBox().zmin >= 0.0, "shell side walls go below the board"
 
 
 def test_shell_v_tongue(shell, housing):
@@ -270,10 +301,10 @@ def test_stl_export(exported):
     assert len(mesh.faces) > 0
     assert mesh.is_watertight, "STL is not watertight"
     (xmin, ymin, zmin), (xmax, ymax, zmax) = mesh.bounds
-    assert_close("STL length (Y)", ymax - ymin, 14.00, TOL_LARGE)
-    assert_close("STL width (X)", xmax - xmin, 8.30, 0.25)
-    assert_close("STL Z min", zmin, -0.60, TOL_SMALL)
-    assert_close("STL Z max", zmax, 4.40, TOL_SMALL)
+    assert_close("STL length (Y)", ymax - ymin, 13.00, TOL_LARGE)
+    assert_close("STL width (X)", xmax - xmin, 8.30, 0.30)
+    assert_close("STL Z min", zmin, -0.50, TOL_SMALL)
+    assert_close("STL Z max", zmax, 4.00, TOL_SMALL)
 
 
 def test_committed_outputs_are_current(exported):

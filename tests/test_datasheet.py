@@ -59,7 +59,11 @@ def test_no_path_given(capsys):
     assert datasheet.ENV_VAR in err and "--datasheet" in err
 
 
-def test_recorded_identity_is_rev_a2():
-    assert params.DATASHEET_REVISION == "A2"
-    assert params.LCSC_PART == "C2939583"
+def test_recorded_identity_is_pj3106m_rev_a():
+    assert params.DATASHEET_MODEL == "PJ-3106M (YBC01)"
+    assert params.DATASHEET_REVISION == "A"
+    assert params.DATASHEET_SHA256 == (
+        "88db1b26c288bbaa0537e7a184d20efc260de7c7e152d95f0d4d86067e96ea4f"
+    )
+    assert params.LCSC_PART == "C7428681"
     assert len(params.DATASHEET_SHA256) == 64

@@ -48,6 +48,16 @@ def build_housing() -> cq.Solid:
         p.NOSE_DIAMETER, _y_from_front(p.NOSE_INTO_HOUSING), nose_tip_y
     )
     nose = nose.faces(">Y").edges().fillet(p.NOSE_FRONT_FILLET)
+    # Flat rim at the housing top, flat underside below the board, and the
+    # below-board part trimmed to the datasheet end-view width (fits the 3.2
+    # board cutout).
+    half_below = p.NOSE_BELOW_BOARD_WIDTH / 2
+    nose = (
+        nose.cut(_box(-_BIG, _BIG, -_BIG, _BIG, p.HOUSING_HEIGHT, _BIG))
+        .cut(_box(-_BIG, _BIG, -_BIG, _BIG, -_BIG, -p.NOSE_DIP))
+        .cut(_box(p.AXIS_X + half_below, _BIG, -_BIG, _BIG, -_BIG, 0))
+        .cut(_box(-_BIG, p.AXIS_X - half_below, -_BIG, _BIG, -_BIG, 0))
+    )
 
     peg = (
         cq.Workplane("XY", origin=(p.AXIS_X, _y_from_front(p.PEG_FROM_FRONT), 0))
@@ -77,12 +87,26 @@ def build_housing() -> cq.Solid:
     )
     housing = housing.cut(bore).cut(recess).cut(chamfer)
 
-    # Notch in the top of the front flange.
+    # Trapezoid notch in the top of the front flange and the flat nose rim
+    # (datasheet front view), running from the flange rear through the nose tip.
     flange_rear_y = _y_from_front(p.FLANGE_THICKNESS)
-    notch = _box(
-        p.AXIS_X - p.FLANGE_NOTCH_WIDTH / 2, p.AXIS_X + p.FLANGE_NOTCH_WIDTH / 2,
-        flange_rear_y, p.FRONT_Y + 0.01,
-        p.HOUSING_HEIGHT - p.FLANGE_NOTCH_DEPTH, _BIG,
+    top_half = p.FLANGE_NOTCH_TOP_WIDTH / 2
+    bottom_half = p.FLANGE_NOTCH_BOTTOM_WIDTH / 2
+    notch_bottom_z = p.HOUSING_HEIGHT - p.FLANGE_NOTCH_DEPTH
+    notch_len = nose_tip_y + 0.1 - flange_rear_y
+    notch = (
+        cq.Workplane("XZ", origin=(0, flange_rear_y, 0))
+        .polyline(
+            [
+                (p.AXIS_X - bottom_half, notch_bottom_z),
+                (p.AXIS_X + bottom_half, notch_bottom_z),
+                (p.AXIS_X + top_half, p.HOUSING_HEIGHT + 0.1),
+                (p.AXIS_X - top_half, p.HOUSING_HEIGHT + 0.1),
+            ]
+        )
+        .close()
+        # The XZ workplane normal is -Y, so extrude a negative distance to go +Y.
+        .extrude(-notch_len)
     )
     housing = housing.cut(notch)
 
