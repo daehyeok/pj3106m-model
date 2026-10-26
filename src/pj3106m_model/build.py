@@ -1,4 +1,7 @@
-"""Build CLI: writes models/PJ-3106M.step and models/PJ-3106M.stl."""
+"""Build CLI: writes models/PJ-3106M.step and models/PJ-3106M.stl.
+
+With --render, also writes the README image docs/PJ-3106M_iso.png.
+"""
 
 import argparse
 from pathlib import Path
@@ -64,12 +67,26 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="also write SVG projections to build/",
     )
+    parser.add_argument(
+        "--render",
+        type=Path,
+        nargs="?",
+        const=PROJECT_ROOT / "docs",
+        default=None,
+        metavar="DIR",
+        help="also write the coloured isometric PNG (default DIR: docs/)",
+    )
     args = parser.parse_args(argv)
     for path in export(args.out):
         print(f"wrote {path}")
     if args.preview:
         for path in export_previews(PROJECT_ROOT / "build"):
             print(f"wrote {path}")
+    if args.render is not None:
+        # Lazy import: a plain build doesn't need matplotlib.
+        from pj3106m_model.render import render_iso
+
+        print(f"wrote {render_iso(args.render)}")
 
 
 if __name__ == "__main__":

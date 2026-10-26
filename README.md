@@ -5,6 +5,8 @@ footprint 3D viewer. It is generated with [CadQuery](https://cadquery.readthedoc
 the vendor datasheet (HAOYU/HOOYA "PJ-31060新模", rev A2). See
 [Source documents](#source-documents).
 
+![PJ-3106M 3D model, isometric view: black housing, gold front shell and leads](docs/PJ-3106M_iso.png)
+
 Outputs (committed, so you don't need Python just to use the model):
 
 | File | Use |
@@ -85,12 +87,15 @@ is gitignored.
 ```sh
 uv run pj3106m-build             # regenerate models/PJ-3106M.{step,stl}
 uv run pj3106m-build --preview   # also write SVG projections to build/ (gitignored)
+uv run pj3106m-build --render    # also regenerate the README image docs/PJ-3106M_iso.png
 uv run pj3106m-build --out DIR   # write the outputs somewhere else
 uv run pytest                    # dimensional checks against the datasheet
 ```
 
-After changing any geometry, rebuild and commit `models/`. A test fails if the committed
-outputs are stale.
+After changing any geometry, rebuild with `--render` and commit `models/` and
+`docs/PJ-3106M_iso.png`. A test fails if the committed STEP/STL outputs are stale. The
+image isn't checked byte-for-byte (matplotlib output can vary between versions), so
+regenerate it yourself.
 
 ## Coordinate frame
 
@@ -139,8 +144,11 @@ pyproject.toml, .python-version, uv.lock   # reproducible uv environment
 src/pj3106m_model/params.py                # every dimension (datasheet-sourced)
 src/pj3106m_model/model.py                 # CadQuery geometry
 src/pj3106m_model/build.py                 # pj3106m-build CLI
+src/pj3106m_model/render.py                # matplotlib isometric PNG render
 tests/test_pj3106m.py                      # datasheet dimensional tests
+tests/test_render.py                       # README image checks
 models/                                    # committed STEP/STL outputs
+docs/                                      # committed README image
 openspec/                                  # OpenSpec specs and changes
 ```
 
